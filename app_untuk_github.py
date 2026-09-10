@@ -4,7 +4,7 @@ from google import genai
 from google.genai import errors
 
 # GANTI tulisan di bawah ini dengan API key kamu sendiri (yang BARU)
-API_KEY = "PASTE_API_KEY_KAMU_DI_SINI"
+API_KEY = st.secrets["API_KEY"]
 
 st.title("Tutor AI - Metode Socrates")
 st.write("Tanyakan sesuatu tentang materi Geografi, dan tutor ini akan membantumu berpikir sendiri!")
