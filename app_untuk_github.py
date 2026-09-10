@@ -3,7 +3,7 @@ import time
 from google import genai
 from google.genai import errors
 
-# GANTI tulisan di bawah ini dengan API key kamu sendiri (yang BARU)
+
 API_KEY = st.secrets["API_KEY"]
 
 st.title("Tutor AI - Metode Socrates")
@@ -60,6 +60,29 @@ ATURAN UTAMA:
 
 client = genai.Client(api_key=API_KEY)
 
+# --- Fungsi untuk menyimpan log ke Google Sheets ---
+@st.cache_resource
+def get_sheet():
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+    ]
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=scopes
+       )
+    gc = gspread.authorize(creds)
+    sheet = gc.open("Log Chatbot Skripsi").sheet1
+    return sheet
+
+def simpan_log(kelompok, pengirim, pesan):
+    try:
+        sheet = get_sheet()
+        waktu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        sheet.append_row([waktu, kelompok, pengirim, pesan])
+    except Exception as e:
+       st.warning(f"Gagal menyimpan log: {e}")
+
+# --- Chat session ---
 if "chat" not in st.session_state:
     st.session_state.client = client
     st.session_state.chat = st.session_state.client.chats.create(
