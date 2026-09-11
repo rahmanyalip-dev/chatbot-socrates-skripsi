@@ -2,7 +2,9 @@ import streamlit as st
 import time
 from google import genai
 from google.genai import errors
-
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime
 
 API_KEY = st.secrets["API_KEY"]
 
@@ -46,21 +48,17 @@ ATURAN UTAMA:
    tautan spesifik ke halaman tertentu. Sebagai gantinya, arahkan
    siswa untuk mencari sendiri dengan memberikan:
    a. NAMA INSTANSI/SUMBER resmi yang relevan beserta alamat website
-      utamanya (misalnya BPS di bps.go.id, BMKG di bmkg.go.id,
-      BNPB di bnpb.go.id, atau mesin pencari berita seperti
-      Google News)
+      utamanya
    b. SARAN KATA KUNCI PENCARIAN yang spesifik dan relevan dengan
       topik yang sedang dibahas
    c. SARAN RENTANG WAKTU/TAHUN yang relevan untuk dicari, jika
       relevan dengan topik
-   Contoh: "Coba buka situs BMKG di bmkg.go.id, lalu cari data
-   curah hujan dengan rentang tahun 2018-2023 untuk melihat polanya."
 7. Gunakan bahasa yang ramah dan sesuai usia siswa SMA.
 """
 
 client = genai.Client(api_key=API_KEY)
 
-# --- Fungsi untuk menyimpan log ke Google Sheets ---
+
 @st.cache_resource
 def get_sheet():
     scopes = [
@@ -69,27 +67,27 @@ def get_sheet():
     ]
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"], scopes=scopes
-       )
+    )
     gc = gspread.authorize(creds)
     sheet = gc.open("Log Chatbot Skripsi").sheet1
     return sheet
+
 
 def simpan_log(kelompok, pengirim, pesan):
     try:
         sheet = get_sheet()
         waktu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         sheet.append_row([waktu, kelompok, pengirim, pesan])
+        st.toast("Log tersimpan ke Google Sheets ✅")
     except Exception as e:
-       st.warning(f"Gagal menyimpan log: {e}")
+        st.error(f"GAGAL menyimpan log: {e}")
 
-# --- Chat session ---
+
 if "chat" not in st.session_state:
     st.session_state.client = client
     st.session_state.chat = st.session_state.client.chats.create(
         model="gemini-3.6-flash",
-        config={
-            "system_instruction": SYSTEM_PROMPT
-        }
+        config={"system_instruction": SYSTEM_PROMPT}
     )
     st.session_state.messages = []
 
@@ -103,6 +101,7 @@ if pesan_siswa:
     st.session_state.messages.append({"role": "user", "content": pesan_siswa})
     with st.chat_message("user"):
         st.write(pesan_siswa)
+    simpan_log("Eksperimen", "Siswa", pesan_siswa)
 
     jawaban = None
     percobaan_maksimal = 3
@@ -121,3 +120,4 @@ if pesan_siswa:
     st.session_state.messages.append({"role": "assistant", "content": jawaban})
     with st.chat_message("assistant"):
         st.write(jawaban)
+    simpan_log("Eksperimen", "Chatbot", jawaban)
